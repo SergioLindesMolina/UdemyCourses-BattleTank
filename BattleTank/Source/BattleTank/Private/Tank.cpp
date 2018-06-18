@@ -1,30 +1,14 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Tank.h"
-#include "TankAimingComponent.h"
-#include "Engine/World.h"
-#include "TankBarrel.h"
-#include "Projectile.h"
 
-void ATank::SetBarrrelReference(UTankBarrel * BarrelToSet)
-{
-	AimingComponent->SetBarrelReference(BarrelToSet);
-	Barrel = BarrelToSet;
-}
 
-void ATank::SetTurretReference(UTankTurret * TurretToSet)
-{
-	AimingComponent->SetTurretReference(TurretToSet);
-}
 
 // Sets default values
 ATank::ATank()
 {
  	// Set this pawn to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
-
-	AimingComponent = CreateDefaultSubobject<UTankAimingComponent>(FName("Aiming Component"));
-	
 }
 
 
@@ -32,6 +16,7 @@ ATank::ATank()
 void ATank::BeginPlay()
 {
 	Super::BeginPlay();
+	TankCurrentHealth = TankMaxHealth;
 	
 }
 
@@ -50,30 +35,28 @@ void ATank::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 
 }
 
-void ATank::AimAt(FVector HitLocation)
-{
-	AimingComponent->AimAt(HitLocation, ProjectileStartSpeed);
-	
-}
-
-void ATank::Fire()
+float ATank::TakeDamage(float DamageAmount, FDamageEvent const & DamageEvent, AController * EventInsitigator, AActor * DamageCauser)
 {
 	
-	if (!ProjectileBlueprint) { return; } // avoid crash by null property 
+	int32 DamagePoints = FMath::RoundToInt(DamageAmount);
+	int32 DamageToApply = FMath::Clamp(DamagePoints, 0, TankMaxHealth);
 
-	bool isReloaded = (FPlatformTime::Seconds() - lastFireTime) > reloadTime;
-	
-	if (Barrel && isReloaded) 
+	TankCurrentHealth -= DamageToApply;
+
+	if (TankCurrentHealth <= 0) 
 	{
-		AProjectile* Projectile = GetWorld()->SpawnActor<AProjectile>
-			(
-			ProjectileBlueprint,
-			Barrel->GetSocketLocation(FName("Projectile")),
-			Barrel->GetSocketRotation(FName("Projectile"))
-			);
-		Projectile->LaunchProjectile(ProjectileStartSpeed);
-	
-		lastFireTime = FPlatformTime::Seconds(); // FPlatformTime::Seconds() time pased in seconds sice start aplication 
+		TankCurrentHealth = 0;
+		DeathDelegate.Broadcast();
 	}
+
+	return DamageToApply;
 }
+
+float ATank::GetPrecentangeHealth() const
+{
+	return (float)TankCurrentHealth / (float)TankMaxHealth;
+}
+
+
+
 

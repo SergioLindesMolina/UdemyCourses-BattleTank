@@ -1,16 +1,37 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "TankPlayerController.h"
-#include "Engine/World.h"
+#include "TankAimingComponent.h"
 #include "Tank.h"
+#include "Engine/World.h"
 
 void ATankPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 
-	auto TankReference = GetControlledTank();
+	auto AimingComponent = GetPawn()->FindComponentByClass<UTankAimingComponent>();
+	if (AimingComponent) 
+	{
+		FoundAimingComponent(AimingComponent);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT(" The tank don't have a Aiming Component"))
+	}
 
-	if (TankReference) {UE_LOG(LogTemp, Warning, TEXT("Player Controler of %s"), *TankReference->GetName()); }
+}
+
+void ATankPlayerController::SetPawn(APawn *  InPawn) {
+
+	Super::SetPawn(InPawn);
+
+	if (InPawn) 
+	{
+			ATank * PossedTank = Cast<ATank>(InPawn);
+			if (!ensure(PossedTank)) { return; }
+			PossedTank->DeathDelegate.AddUniqueDynamic(this, &ATankPlayerController::OnDeathTank);
+	}
+
 }
 
 void ATankPlayerController::Tick(float DeltaTime)
@@ -22,13 +43,29 @@ void ATankPlayerController::Tick(float DeltaTime)
 
 void ATankPlayerController::AimTowardsCrosshair()
 {
-	if (!GetControlledTank()) { return; }
+	auto PawnPossed = GetPawn();
 
-	FVector HitLocation = FVector(0, 0, 0);
+	if (PawnPossed) {
 
-	if (GetSightRayHitLocation(HitLocation)) 
+		auto AimingComponent = PawnPossed->FindComponentByClass<UTankAimingComponent>();
+		if (!ensure(AimingComponent)) { return; }
+
+		FVector HitLocation = FVector(0, 0, 0);
+
+		if (GetSightRayHitLocation(HitLocation))
+		{
+			AimingComponent->AimAt(HitLocation);
+		}
+	}
+}
+
+void ATankPlayerController::OnDeathTank()
+{
+	
+	auto * PossedPawn = GetPawnOrSpectator();
+	if (PossedPawn)
 	{
-		GetControlledTank()->AimAt(HitLocation);
+		StartSpectatingOnly();
 	}
 }
 
@@ -47,10 +84,10 @@ bool ATankPlayerController::GetSightRayHitLocation(FVector &HitLocation) const
 	if (GetLookDirection(ScreenCrossHairLocation, RayWorldDirection))
 	{
 		//Make Line trace trough crosshair 	
-		GetLookHitLocation(RayWorldDirection, HitLocation);
+		return GetLookHitLocation(RayWorldDirection, HitLocation);
 	}
 
-	return true;
+	return false;
 }
 
 
@@ -88,7 +125,3 @@ bool ATankPlayerController::GetLookHitLocation(FVector Direction, FVector &HitLo
 	
 }
 
-ATank* ATankPlayerController::GetControlledTank() const
-{
-	return Cast<ATank>(GetPawn());
-}

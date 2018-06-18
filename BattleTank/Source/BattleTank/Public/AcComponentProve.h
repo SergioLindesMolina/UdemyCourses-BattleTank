@@ -16,7 +16,7 @@ public:
 	// Sets default values for this component's properties
 	UAcComponentProve();
 
-	UPROPERTY(EditAnywhere, Category = Setup)
+	UPROPERTY(EditAnywhere, Category = "Setup")
 		UBoxComponent * Trigger;
 
 protected:

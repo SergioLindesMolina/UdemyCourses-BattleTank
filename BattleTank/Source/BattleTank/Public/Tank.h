@@ -6,51 +6,21 @@
 #include "GameFramework/Pawn.h"
 #include "Tank.generated.h"
 
-class AProjectile;
-class UTankBarrel;
-class UTankAimingComponent;
-class UTankTurret;
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FDeathDelegate);
 
 UCLASS()
 class BATTLETANK_API ATank : public APawn
 {
 	GENERATED_BODY()
 
-public:
-
-	// Sets default values for this pawn's properties
-	UFUNCTION(BlueprintCallable, Category = Setup)
-	void SetBarrrelReference(UTankBarrel* BarrelToSet);
-
-	UFUNCTION(BlueprintCallable, Category = Setup)
-	void SetTurretReference(UTankTurret* TurretToSet);
-
-	void AimAt(FVector HitLocation);
-
-
-	UPROPERTY(EditDefaultsOnly, Category = Setup)
-	TSubclassOf<AProjectile> ProjectileBlueprint;
-
-	UFUNCTION(BlueprintCallable, Category = Firing)
-	void Fire();
-
-	UPROPERTY(EditDefaultsOnly, Category = Firing)
-	float ProjectileStartSpeed = 100.0f;
-
-
-	UPROPERTY(EditDefaultsOnly, Category = Firing)
-	float reloadTime = 3;
-
-
-
-	double lastFireTime = 0; 
-
-	//Local barrel reference to fire projectile 
-	UTankBarrel* Barrel;
 
 protected:
-	UTankAimingComponent* AimingComponent = nullptr;
 
+	UPROPERTY(EditDefaultsOnly, Category = "Setup")
+	int32 TankMaxHealth = 100;
+
+	UPROPERTY(VisibleAnywhere, Category = "Health")
+	int32 TankCurrentHealth;
 
 private:	
 
@@ -65,6 +35,15 @@ private:
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
+public :
+
+	FDeathDelegate DeathDelegate;
+
+	virtual float TakeDamage(float DamageAmount, FDamageEvent const &DamageEvent, AController * EventInsitigator, AActor *DamageCauser) override;
 	
+	//Return healt in a precentage between 0 and 1 
+	UFUNCTION(BlueprintPure, Category = "Health")
+	float GetPrecentangeHealth() const;
 	
+
 };
