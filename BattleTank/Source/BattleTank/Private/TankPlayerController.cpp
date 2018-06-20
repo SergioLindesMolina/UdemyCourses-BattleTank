@@ -9,6 +9,7 @@ void ATankPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 
+	if (!GetPawn()) { return; }
 	auto AimingComponent = GetPawn()->FindComponentByClass<UTankAimingComponent>();
 	if (AimingComponent) 
 	{
@@ -112,7 +113,7 @@ bool ATankPlayerController::GetLookHitLocation(FVector Direction, FVector &HitLo
 	
 	FHitResult HitResault;
 
-	if (GetWorld()->LineTraceSingleByChannel(HitResault, StartPos, EndPos, ECollisionChannel::ECC_Visibility))
+	if (GetWorld()->LineTraceSingleByChannel(HitResault, StartPos, EndPos, ECollisionChannel::ECC_Camera))
 	{
 		HitLocation = HitResault.Location;
 		return true;

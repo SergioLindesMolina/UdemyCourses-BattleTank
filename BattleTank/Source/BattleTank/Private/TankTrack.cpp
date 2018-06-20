@@ -3,6 +3,8 @@
 #include "TankTrack.h"
 #include "Engine/World.h"
 #include "DrawDebugHelpers.h"
+#include "SprungWheel.h"
+#include "SpawnPoint.h"
 
 
 UTankTrack::UTankTrack() 
@@ -13,58 +15,51 @@ UTankTrack::UTankTrack()
 void UTankTrack::BeginPlay()
 {
 	Super::BeginPlay();
-
-	OnComponentHit.AddDynamic(this,&UTankTrack::OnHit);
-
 }
 
 void UTankTrack::SetThrottle(float throttle) 
 {
-	CurrentThrottle = FMath::Clamp<float>(CurrentThrottle + throttle, -1, 1);
+	float CurrentThrottle = FMath::Clamp<float>(throttle, -1, 1);
+
+	DriveTank(CurrentThrottle);
 }
 
-void UTankTrack::DriveTank()
+void UTankTrack::DriveTank(float CurrentThrottle)
 {
-	FVector forceToApply = GetForwardVector() * CurrentThrottle * maxDrivingForce;
-
+	auto forceToApply = CurrentThrottle * maxDrivingForce;
+	auto Wheels = GetWheels();
+	auto forceByWheel = forceToApply / Wheels.Num();
 	
-//DrawDebugLine(
-//		GetWorld(),
-//		GetComponentLocation(),
-//		GetComponentLocation() + forceToApply,
-//		FColor(255, 0, 0),
-//		false, 5, 0,
-//		12.333
-//	);
+	for (int i = 0; i < Wheels.Num(); i++)
+	{
+		Wheels[i]->AddDrivingForce(forceByWheel);
+	}
 
-	UPrimitiveComponent* tankBase = Cast<UPrimitiveComponent>(GetOwner()->GetRootComponent());
-	tankBase->AddForceAtLocation(forceToApply, GetComponentLocation());
+
+	//UPrimitiveComponent* tankBase = Cast<UPrimitiveComponent>(GetOwner()->GetRootComponent());
+	//tankBase->AddForceAtLocation(forceToApply, GetComponentLocation());
 }
 
-void UTankTrack::ApplySidewaysForce( )
+
+TArray<ASprungWheel*> UTankTrack::GetWheels() const
 {
-	// Corrrection to avoid  side ways slippage 
-	// Slippage Speed 
-	auto slippageSpeed = FVector::DotProduct(GetRightVector(), GetComponentVelocity());
-
-	//  Aceleration requiered this frame
-	auto DeltaTime = GetWorld()->DeltaTimeSeconds;
-	auto correctionAceleration = -(slippageSpeed / DeltaTime) * GetRightVector();
-
-	// force requiered 
-
-	auto tankRoot = Cast<UStaticMeshComponent>(GetOwner()->GetRootComponent());
-	auto correctionForce = tankRoot->GetMass() * correctionAceleration  * 0.5; // 0.5 because there are thow tracks
-
-	tankRoot->AddForce(correctionForce);
-}
-
-void UTankTrack::OnHit(UPrimitiveComponent * HitComponent, AActor* OtherActor, UPrimitiveComponent * OtherComponent, FVector NormalImpulse, const FHitResult& Hit) 
-{
+	TArray<ASprungWheel*> trackWheels;
 	
-	DriveTank();
-	// Correct Sideways movement of the tank appling force
-	ApplySidewaysForce();
-	CurrentThrottle = 0;
+	TArray<USceneComponent*> spawnPoints;
+	GetChildrenComponents(true, spawnPoints);
+	
+	for (int i = 0; i < spawnPoints.Num(); i++)
+	{
+		auto spawnPoint = Cast<USpawnPoint>(spawnPoints[i]);
+		if (!spawnPoint) continue;
+
+		auto wheel = Cast<ASprungWheel>(spawnPoint->GetActorSpawned());
+		if (!wheel) continue;
+
+		trackWheels.Add(wheel);
+	}
+
+	return trackWheels;
 }
+
 
